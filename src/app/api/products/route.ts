@@ -40,6 +40,10 @@ function normalizeStringArray(value: unknown, min: number, max: number, itemMaxL
   return items;
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function getEmailFromRequest(request: NextRequest) {
   const authHeader = request.headers.get('authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
@@ -67,6 +71,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+    const search = searchParams.get('search');
+    const sort = searchParams.get('sort') || 'newest';
+    const discounted =
+      searchParams.get('discounted') === '1' ||
+      searchParams.get('discounted') === 'true';
     const admin = searchParams.get('admin') === '1';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '12');
@@ -106,18 +115,73 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const query: { is_active: boolean; category?: string } = { is_active: true };
+    const query: Record<string, unknown> = { is_active: true };
     if (category) {
       query.category = category;
     }
+    if (discounted) {
+      query.compare_at_price = { $type: 'number' };
+      query.$expr = { $gt: ['$compare_at_price', '$price'] };
+    }
+    if (search && search.trim()) {
+      const re = new RegExp(escapeRegex(search.trim()), 'i');
+      query.$or = [{ name: re }, { description: re }];
+    }
 
-    const products = await db
-      .collection<Product>('products')
-      .find(query)
-      .sort({ created_at: -1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray();
+    const sortSpec =
+      sort === 'price-low'
+        ? { price: 1, created_at: -1 }
+        : sort === 'price-high'
+          ? { price: -1, created_at: -1 }
+          : sort === 'name'
+            ? { name: 1, created_at: -1 }
+            : { created_at: -1 };
+
+    const products =
+      sort === 'discount'
+        ? await db
+            .collection<Product>('products')
+            .aggregate([
+              { $match: query },
+              {
+                $addFields: {
+                  discountPercent: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $isNumber: '$compare_at_price' },
+                          { $gt: ['$compare_at_price', '$price'] },
+                        ],
+                      },
+                      {
+                        $multiply: [
+                          {
+                            $divide: [
+                              { $subtract: ['$compare_at_price', '$price'] },
+                              '$compare_at_price',
+                            ],
+                          },
+                          100,
+                        ],
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+              { $sort: { discountPercent: -1, created_at: -1 } },
+              { $skip: skip },
+              { $limit: limit },
+              { $project: { discountPercent: 0 } },
+            ])
+            .toArray()
+        : await db
+            .collection<Product>('products')
+            .find(query)
+            .sort(sortSpec)
+            .skip(skip)
+            .limit(limit)
+            .toArray();
 
     const total = await db.collection('products').countDocuments(query);
 

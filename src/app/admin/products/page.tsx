@@ -383,22 +383,22 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex items-center justify-between gap-4 mb-8">
-        <div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="flex flex-col sm:flex-row sm:items-center items-start justify-between gap-4 mb-8">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-black">Products</h1>
           <p className="text-gray-600">Create collections and upload products with multiple images.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full sm:w-auto items-center gap-2">
           <button
-            className={tab === 'products' ? 'luxury-button' : 'luxury-button-outline'}
+            className={`${tab === 'products' ? 'luxury-button' : 'luxury-button-outline'} flex-1 sm:flex-none`}
             onClick={() => setTab('products')}
             type="button"
           >
             Products
           </button>
           <button
-            className={tab === 'collections' ? 'luxury-button' : 'luxury-button-outline'}
+            className={`${tab === 'collections' ? 'luxury-button' : 'luxury-button-outline'} flex-1 sm:flex-none`}
             onClick={() => setTab('collections')}
             type="button"
           >
@@ -625,145 +625,288 @@ export default function AdminProductsPage() {
             {products.length === 0 ? (
               <p className="text-gray-600">No products yet.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-600 border-b border-gray-200">
-                      <th className="py-2 pr-4">Product</th>
-                      <th className="py-2 pr-4">Collection</th>
-                      <th className="py-2 pr-4">Price</th>
-                      <th className="py-2 pr-4">Discount</th>
-                      <th className="py-2 pr-4">Inventory</th>
-                      <th className="py-2 pr-4">Active</th>
-                      <th className="py-2 pr-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map((p) => (
-                      <tr key={p._id} className="border-b border-gray-100">
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-3">
-                            <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
-                              <Image
-                                src={p.images?.[0] || '/placeholder-product.jpg'}
-                                alt={p.name}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-medium text-black truncate">{p.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{p._id}</p>
-                            </div>
+              <>
+                <div className="sm:hidden space-y-3">
+                  {products.map((p) => {
+                    const compareAt =
+                      typeof p.compare_at_price === 'number' ? p.compare_at_price : null;
+                    const hasDiscount = compareAt !== null && compareAt > p.price;
+                    const discountPercent = hasDiscount
+                      ? Math.round(((compareAt - p.price) / compareAt) * 100)
+                      : 0;
+
+                    return (
+                      <div key={p._id} className="rounded-xl border border-gray-200 bg-white p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
+                            <Image
+                              src={p.images?.[0] || '/placeholder-product.jpg'}
+                              alt={p.name}
+                              fill
+                              className="object-cover"
+                            />
                           </div>
-                        </td>
-                        <td className="py-3 pr-4 text-gray-800">{p.category}</td>
-                        <td className="py-3 pr-4 text-gray-800">
-                          {editingProductId === p._id ? (
-                            <input
-                              value={editRegularPrice}
-                              onChange={(e) => setEditRegularPrice(e.target.value)}
-                              className="w-32 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
-                              inputMode="decimal"
-                            />
-                          ) : (
-                            <div className="flex flex-col">
-                              <span className="font-medium text-black">{formatPrice(p.price)}</span>
-                              {typeof p.compare_at_price === 'number' && p.compare_at_price > p.price ? (
-                                <span className="text-xs text-gray-500 line-through">
-                                  {formatPrice(p.compare_at_price)}
-                                </span>
-                              ) : null}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 pr-4 text-gray-800">
-                          {editingProductId === p._id ? (
-                            <div className="flex items-center gap-2">
-                              <input
-                                value={editDiscountPercent}
-                                onChange={(e) => setEditDiscountPercent(e.target.value)}
-                                className="w-20 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
-                                inputMode="numeric"
-                              />
-                              <span className="text-gray-600">%</span>
-                            </div>
-                          ) : typeof p.compare_at_price === 'number' && p.compare_at_price > p.price ? (
-                            <span className="inline-flex items-center rounded-full bg-black px-2.5 py-1 text-xs font-medium text-white">
-                              -{Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100)}%
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-black truncate">{p.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{p._id}</p>
+                            <p className="mt-1 text-sm text-gray-700">{p.category}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                                p.is_active
+                                  ? 'border border-gray-200 bg-white text-gray-700'
+                                  : 'bg-black text-white'
+                              }`}
+                            >
+                              {p.is_active ? 'Active' : 'Inactive'}
                             </span>
-                          ) : (
-                            <span className="text-gray-500">—</span>
-                          )}
-                        </td>
-                        <td className="py-3 pr-4 text-gray-800">
-                          {editingProductId === p._id ? (
-                            <input
-                              value={editInventory}
-                              onChange={(e) => setEditInventory(e.target.value)}
-                              className="w-24 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
-                              inputMode="numeric"
-                            />
-                          ) : (
-                            p.inventory
-                          )}
-                        </td>
-                        <td className="py-3 pr-4">
-                          <button
-                            type="button"
-                            className={p.is_active ? 'luxury-button-outline' : 'luxury-button'}
-                            onClick={() => toggleProductActive(p._id, !p.is_active)}
-                            disabled={busy}
-                          >
-                            {p.is_active ? 'Yes' : 'No'}
-                          </button>
-                        </td>
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-2">
-                            {editingProductId === p._id ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="luxury-button disabled:opacity-60"
-                                  onClick={() => saveProductPricing(p._id)}
-                                  disabled={busy}
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  type="button"
-                                  className="luxury-button-outline disabled:opacity-60"
-                                  onClick={cancelEditProduct}
-                                  disabled={busy}
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
+                            {hasDiscount ? (
+                              <span className="inline-flex items-center rounded-full bg-black px-2.5 py-1 text-xs font-medium text-white">
+                                -{discountPercent}%
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {editingProductId === p._id ? (
+                          <div className="mt-4 space-y-3">
+                            <div className="grid grid-cols-1 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Regular price</label>
+                                <input
+                                  value={editRegularPrice}
+                                  onChange={(e) => setEditRegularPrice(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                                  inputMode="decimal"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Discount (%)</label>
+                                <input
+                                  value={editDiscountPercent}
+                                  onChange={(e) => setEditDiscountPercent(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                                  inputMode="numeric"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Inventory</label>
+                                <input
+                                  value={editInventory}
+                                  onChange={(e) => setEditInventory(e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                                  inputMode="numeric"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
                               <button
                                 type="button"
-                                className="luxury-button-outline disabled:opacity-60"
-                                onClick={() => startEditProduct(p)}
+                                className="luxury-button w-full disabled:opacity-60"
+                                onClick={() => saveProductPricing(p._id)}
                                 disabled={busy}
                               >
-                                Edit
+                                Save
                               </button>
-                            )}
+                              <button
+                                type="button"
+                                className="luxury-button-outline w-full disabled:opacity-60"
+                                onClick={cancelEditProduct}
+                                disabled={busy}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-4 flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-base font-semibold text-black">{formatPrice(p.price)}</span>
+                                {hasDiscount ? (
+                                  <span className="text-xs text-gray-500 line-through">
+                                    {formatPrice(compareAt as number)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="mt-1 text-sm text-gray-700">Stock: {p.inventory}</p>
+                            </div>
                             <button
                               type="button"
                               className="luxury-button-outline disabled:opacity-60"
-                              onClick={() => archiveProduct(p._id)}
+                              onClick={() => startEditProduct(p)}
                               disabled={busy}
                             >
-                              Archive
+                              Edit
                             </button>
                           </div>
-                        </td>
+                        )}
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            className={p.is_active ? 'luxury-button-outline w-full' : 'luxury-button w-full'}
+                            onClick={() => toggleProductActive(p._id, !p.is_active)}
+                            disabled={busy}
+                          >
+                            {p.is_active ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            type="button"
+                            className="luxury-button-outline w-full disabled:opacity-60"
+                            onClick={() => archiveProduct(p._id)}
+                            disabled={busy}
+                          >
+                            Archive
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-600 border-b border-gray-200">
+                        <th className="py-2 pr-4">Product</th>
+                        <th className="py-2 pr-4">Collection</th>
+                        <th className="py-2 pr-4">Price</th>
+                        <th className="py-2 pr-4">Discount</th>
+                        <th className="py-2 pr-4">Inventory</th>
+                        <th className="py-2 pr-4">Active</th>
+                        <th className="py-2 pr-4">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {products.map((p) => (
+                        <tr key={p._id} className="border-b border-gray-100">
+                          <td className="py-3 pr-4">
+                            <div className="flex items-center gap-3">
+                              <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
+                                <Image
+                                  src={p.images?.[0] || '/placeholder-product.jpg'}
+                                  alt={p.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-black truncate">{p.name}</p>
+                                <p className="text-xs text-gray-500 truncate">{p._id}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 pr-4 text-gray-800">{p.category}</td>
+                          <td className="py-3 pr-4 text-gray-800">
+                            {editingProductId === p._id ? (
+                              <input
+                                value={editRegularPrice}
+                                onChange={(e) => setEditRegularPrice(e.target.value)}
+                                className="w-32 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                                inputMode="decimal"
+                              />
+                            ) : (
+                              <div className="flex flex-col">
+                                <span className="font-medium text-black">{formatPrice(p.price)}</span>
+                                {typeof p.compare_at_price === 'number' && p.compare_at_price > p.price ? (
+                                  <span className="text-xs text-gray-500 line-through">
+                                    {formatPrice(p.compare_at_price)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 pr-4 text-gray-800">
+                            {editingProductId === p._id ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  value={editDiscountPercent}
+                                  onChange={(e) => setEditDiscountPercent(e.target.value)}
+                                  className="w-20 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                                  inputMode="numeric"
+                                />
+                                <span className="text-gray-600">%</span>
+                              </div>
+                            ) : typeof p.compare_at_price === 'number' && p.compare_at_price > p.price ? (
+                              <span className="inline-flex items-center rounded-full bg-black px-2.5 py-1 text-xs font-medium text-white">
+                                -{Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100)}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-500">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 pr-4 text-gray-800">
+                            {editingProductId === p._id ? (
+                              <input
+                                value={editInventory}
+                                onChange={(e) => setEditInventory(e.target.value)}
+                                className="w-24 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                                inputMode="numeric"
+                              />
+                            ) : (
+                              p.inventory
+                            )}
+                          </td>
+                          <td className="py-3 pr-4">
+                            <button
+                              type="button"
+                              className={p.is_active ? 'luxury-button-outline' : 'luxury-button'}
+                              onClick={() => toggleProductActive(p._id, !p.is_active)}
+                              disabled={busy}
+                            >
+                              {p.is_active ? 'Yes' : 'No'}
+                            </button>
+                          </td>
+                          <td className="py-3 pr-4">
+                            <div className="flex items-center gap-2">
+                              {editingProductId === p._id ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="luxury-button disabled:opacity-60"
+                                    onClick={() => saveProductPricing(p._id)}
+                                    disabled={busy}
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="luxury-button-outline disabled:opacity-60"
+                                    onClick={cancelEditProduct}
+                                    disabled={busy}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="luxury-button-outline disabled:opacity-60"
+                                  onClick={() => startEditProduct(p)}
+                                  disabled={busy}
+                                >
+                                  Edit
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="luxury-button-outline disabled:opacity-60"
+                                onClick={() => archiveProduct(p._id)}
+                                disabled={busy}
+                              >
+                                Archive
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>

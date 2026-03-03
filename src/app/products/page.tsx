@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { Search, Filter, ChevronDown } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -21,20 +22,23 @@ interface Product {
   created_at: string;
 }
 
-const categories = [
-  { id: 'all', name: 'All Collections' },
-  { id: 'evening', name: 'Evening Elegance' },
-  { id: 'business', name: 'Business Class' },
-  { id: 'casual', name: 'Casual Luxury' },
-  { id: 'accessories', name: 'Accessories' },
-];
+type CategoryOption = { id: string; name: string };
 
 const sortOptions = [
   { id: 'newest', name: 'Newest First' },
   { id: 'price-low', name: 'Price: Low to High' },
   { id: 'price-high', name: 'Price: High to Low' },
   { id: 'name', name: 'Name: A to Z' },
+  { id: 'discount', name: 'Discount: High to Low' },
 ];
+
+type CollectionsApiItem = { slug: string; name: string };
+
+function isCollectionsApiItem(value: unknown): value is CollectionsApiItem {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.slug === 'string' && typeof v.name === 'string';
+}
 
 function cleanImageSrc(value: unknown) {
   if (typeof value !== 'string') return '';
@@ -44,18 +48,64 @@ function cleanImageSrc(value: unknown) {
 }
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [querySearchTerm, setQuerySearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [categories, setCategories] = useState<CategoryOption[]>([{ id: 'all', name: 'All Collections' }]);
+
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get('category');
+    if (categoryFromUrl) {
+      setSelectedCategory(categoryFromUrl);
+    }
+
+    const searchFromUrl = searchParams.get('search');
+    if (searchFromUrl) {
+      setSearchTerm(searchFromUrl);
+      setQuerySearchTerm(searchFromUrl);
+    }
+
+    setCurrentPage(1);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const fetchCollections = async () => {
+      try {
+        const res = await fetch('/api/collections');
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.data)) {
+          const next: CategoryOption[] = [
+            { id: 'all', name: 'All Collections' },
+            ...data.data
+              .filter(isCollectionsApiItem)
+              .map((c) => ({ id: c.slug, name: c.name })),
+          ];
+          setCategories(next);
+        }
+      } catch (error) {
+        console.error('Error fetching collections:', error);
+      }
+    };
+
+    fetchCollections();
+  }, []);
+
+  const categoryOptions = useMemo(() => {
+    const unique = new Map<string, CategoryOption>();
+    for (const c of categories) unique.set(c.id, c);
+    return Array.from(unique.values());
+  }, [categories]);
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedCategory, sortBy, currentPage]);
+  }, [selectedCategory, sortBy, currentPage, querySearchTerm]);
 
   const fetchProducts = async () => {
     try {
@@ -65,8 +115,11 @@ export default function ProductsPage() {
       if (selectedCategory !== 'all') {
         params.append('category', selectedCategory);
       }
-      if (searchTerm) {
-        params.append('search', searchTerm);
+      if (querySearchTerm) {
+        params.append('search', querySearchTerm);
+      }
+      if (sortBy) {
+        params.append('sort', sortBy);
       }
       params.append('page', currentPage.toString());
       params.append('limit', '12');
@@ -88,7 +141,7 @@ export default function ProductsPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
-    fetchProducts();
+    setQuerySearchTerm(searchTerm);
   };
 
   const formatPrice = (price: number) => {
@@ -103,29 +156,29 @@ export default function ProductsPage() {
       <Navigation />
       
       {/* Header */}
-      <div className="bg-gray-50 py-16">
+      <div className="bg-gray-50 py-10 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-4xl md:text-5xl font-bold luxury-heading text-black mb-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold luxury-heading text-black mb-3">
             Our Collections
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl">
+          <p className="text-base sm:text-lg text-gray-600 max-w-2xl">
             Discover our carefully curated selection of luxury fashion pieces, 
             each crafted with exceptional attention to detail and premium materials.
           </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
           {/* Search */}
-          <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
+          <form onSubmit={handleSearch} className="relative flex-1 w-full md:max-w-md">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search products..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 focus:border-black focus:outline-none transition-colors"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 focus:border-black focus:outline-none transition-colors rounded-lg"
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           </form>
@@ -133,7 +186,7 @@ export default function ProductsPage() {
           {/* Mobile Filter Toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="md:hidden flex items-center space-x-2 px-4 py-2 border border-gray-300 hover:border-black transition-colors"
+            className="md:hidden flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 hover:border-black transition-colors rounded-lg"
           >
             <Filter className="h-5 w-5" />
             <span>Filters</span>
@@ -148,9 +201,9 @@ export default function ProductsPage() {
                 setSelectedCategory(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors"
+              className="px-4 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors rounded-lg"
             >
-              {categories.map((category) => (
+              {categoryOptions.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
@@ -163,7 +216,7 @@ export default function ProductsPage() {
                 setSortBy(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors"
+              className="px-4 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors rounded-lg"
             >
               {sortOptions.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -177,48 +230,42 @@ export default function ProductsPage() {
         {/* Mobile Filters */}
         {showFilters && (
           <div className="md:hidden mb-8 p-4 bg-gray-50 rounded-lg">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => {
-                    setSelectedCategory(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors"
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => {
-                    setSortBy(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 focus:border-black focus:outline-none transition-colors"
-                >
-                  {sortOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="grid grid-cols-1 gap-4">
+              <select
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-3 py-3 border border-gray-300 focus:border-black focus:outline-none transition-colors rounded-lg bg-white"
+              >
+                {categoryOptions.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full px-3 py-3 border border-gray-300 focus:border-black focus:outline-none transition-colors rounded-lg bg-white"
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         )}
 
         {/* Products Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div className="aspect-[3/4] bg-gray-200 rounded-lg mb-4"></div>
@@ -233,8 +280,10 @@ export default function ProductsPage() {
             <button
               onClick={() => {
                 setSearchTerm('');
+                setQuerySearchTerm('');
                 setSelectedCategory('all');
                 setCurrentPage(1);
+                setShowFilters(false);
               }}
               className="luxury-button"
             >
@@ -242,7 +291,7 @@ export default function ProductsPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {products.map((product) => (
               <Link
                 key={product._id}
@@ -252,6 +301,11 @@ export default function ProductsPage() {
                 <div className="relative overflow-hidden rounded-lg bg-white shadow-sm hover:shadow-xl transition-all duration-300">
                   {/* Product Image */}
                   <div className="aspect-[3/4] relative overflow-hidden">
+                    {typeof product.compare_at_price === 'number' && product.compare_at_price > product.price ? (
+                      <div className="absolute left-4 top-4 z-10 rounded-full bg-black px-3 py-1 text-xs font-medium text-white">
+                        -{Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}%
+                      </div>
+                    ) : null}
                     <Image
                       src={cleanImageSrc(product.images?.[0]) || '/placeholder-product.jpg'}
                       alt={product.name}
@@ -261,16 +315,16 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Product Info */}
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold luxury-heading text-black mb-2 line-clamp-2">
+                  <div className="p-4 sm:p-6">
+                    <h3 className="text-base sm:text-lg font-semibold luxury-heading text-black mb-2 line-clamp-2">
                       {product.name}
                     </h3>
-                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                    <p className="text-gray-600 text-xs sm:text-sm mb-3 line-clamp-2">
                       {product.description}
                     </p>
                     <div className="flex items-center justify-between">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-xl font-bold text-black">{formatPrice(product.price)}</span>
+                        <span className="text-lg sm:text-xl font-bold text-black">{formatPrice(product.price)}</span>
                         {typeof product.compare_at_price === 'number' && product.compare_at_price > product.price ? (
                           <span className="text-sm text-gray-500 line-through">
                             {formatPrice(product.compare_at_price)}
@@ -278,11 +332,11 @@ export default function ProductsPage() {
                         ) : null}
                       </div>
                       {product.inventory === 0 ? (
-                        <span className="text-sm text-red-600 font-medium">Out of Stock</span>
+                        <span className="text-xs sm:text-sm text-red-600 font-medium">Out of Stock</span>
                       ) : product.inventory < 5 ? (
-                        <span className="text-sm text-amber-600 font-medium">Low Stock</span>
+                        <span className="text-xs sm:text-sm text-amber-600 font-medium">Low Stock</span>
                       ) : (
-                        <span className="text-sm text-green-600 font-medium">In Stock</span>
+                        <span className="text-xs sm:text-sm text-green-600 font-medium">In Stock</span>
                       )}
                     </div>
                   </div>

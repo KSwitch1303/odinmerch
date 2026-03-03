@@ -17,6 +17,7 @@ type Product = {
   name: string;
   description: string;
   price: number;
+  compare_at_price?: number | null;
   images: string[];
   inventory: number;
 };
@@ -97,7 +98,7 @@ export default function FeaturedCollections() {
   }, [sections]);
 
   return (
-    <section className="py-12 sm:py-16 lg:py-20 bg-gray-50">
+    <section className="pt-12 sm:pt-16 lg:pt-20 pb-24 sm:pb-28 lg:pb-32 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-10 sm:mb-14">
           <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold luxury-heading text-black">
@@ -149,6 +150,16 @@ export default function FeaturedCollections() {
                           >
                             <div className="overflow-hidden rounded-xl bg-white border border-neutral-200">
                               <div className="aspect-[4/5] relative overflow-hidden">
+                                {typeof product.compare_at_price === 'number' &&
+                                product.compare_at_price > product.price ? (
+                                  <div className="absolute left-3 top-3 z-10 rounded-full bg-black px-3 py-1 text-xs font-medium text-white">
+                                    -
+                                    {Math.round(
+                                      ((product.compare_at_price - product.price) / product.compare_at_price) * 100
+                                    )}
+                                    %
+                                  </div>
+                                ) : null}
                                 <Image
                                   src={cleanImageSrc(product.images?.[0]) || '/placeholder-product.jpg'}
                                   alt={product.name}
@@ -183,6 +194,16 @@ export default function FeaturedCollections() {
                         <Link key={product._id} href={`/products/${product._id}`} className="group block">
                           <div className="relative overflow-hidden rounded-xl bg-white border border-neutral-200 hover:shadow-xl transition-all duration-300">
                             <div className="aspect-[3/4] relative overflow-hidden">
+                              {typeof product.compare_at_price === 'number' &&
+                              product.compare_at_price > product.price ? (
+                                <div className="absolute left-4 top-4 z-10 rounded-full bg-black px-3 py-1 text-xs font-medium text-white">
+                                  -
+                                  {Math.round(
+                                    ((product.compare_at_price - product.price) / product.compare_at_price) * 100
+                                  )}
+                                  %
+                                </div>
+                              ) : null}
                               <Image
                                 src={cleanImageSrc(product.images?.[0]) || '/placeholder-product.jpg'}
                                 alt={product.name}
