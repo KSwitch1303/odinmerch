@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function HeroBanner() {
@@ -88,6 +88,18 @@ export default function HeroBanner() {
     setMobileIndex((prev) => (prev + direction + effectiveMobileUrls.length) % effectiveMobileUrls.length);
   };
 
+  const desktopSlideVariants: Variants = {
+    enter: (direction: number) => ({ x: direction > 0 ? 120 : -120, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (direction: number) => ({ x: direction > 0 ? -120 : 120, opacity: 0 }),
+  };
+
+  const mobileSlideVariants: Variants = {
+    enter: (direction: number) => ({ x: direction > 0 ? 90 : -90, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (direction: number) => ({ x: direction > 0 ? -90 : 90, opacity: 0 }),
+  };
+
   useEffect(() => {
     let rafId = 0;
     const maxScroll = 240;
@@ -164,19 +176,20 @@ export default function HeroBanner() {
   const hasBackground = desktopUrls.length > 0 || mobileUrls.length > 0;
 
   return (
-    <section className="relative h-screen bg-white">
+    <section className="sticky top-0 z-0 h-screen bg-white">
       {hasBackground ? (
         <div className="absolute inset-0">
           <div className="absolute inset-0 hidden md:block overflow-hidden">
-            <AnimatePresence mode="wait" custom={desktopDirection}>
+            <AnimatePresence initial={false} custom={desktopDirection}>
               {desktopUrls.length > 0 ? (
                 <motion.div
                   key={desktopUrls[safeDesktopIndex] || `desktop-${safeDesktopIndex}`}
                   className="absolute inset-0"
                   custom={desktopDirection}
-                  initial={(direction: 1 | -1) => ({ x: direction > 0 ? 120 : -120, opacity: 0 })}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={(direction: 1 | -1) => ({ x: direction > 0 ? -120 : 120, opacity: 0 })}
+                  variants={desktopSlideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                   transition={{
                     x: { type: 'spring', stiffness: 260, damping: 28 },
                     opacity: { duration: 0.35 },
@@ -225,15 +238,16 @@ export default function HeroBanner() {
             ) : null}
           </div>
           <div className="absolute inset-0 md:hidden overflow-hidden">
-            <AnimatePresence mode="wait" custom={mobileDirection}>
+            <AnimatePresence initial={false} custom={mobileDirection}>
               {effectiveMobileUrls.length > 0 ? (
                 <motion.div
                   key={effectiveMobileUrls[safeMobileIndex] || `mobile-${safeMobileIndex}`}
                   className="absolute inset-0"
                   custom={mobileDirection}
-                  initial={(direction: 1 | -1) => ({ x: direction > 0 ? 90 : -90, opacity: 0 })}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={(direction: 1 | -1) => ({ x: direction > 0 ? -90 : 90, opacity: 0 })}
+                  variants={mobileSlideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                   transition={{
                     x: { type: 'spring', stiffness: 260, damping: 28 },
                     opacity: { duration: 0.35 },

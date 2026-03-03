@@ -10,11 +10,15 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       <Navigation hideBrandOnHome overlay />
       <HeroBanner />
-      <div className="-mt-16 pt-16">
-        <FeaturedCollections />
-        {/* <BrandStory />
-        <Newsletter /> */}
-        <Footer />
+      <div className="relative z-10 -mt-24 pt-24">
+        <div className="bg-white shadow-[0_-18px_40px_rgba(0,0,0,0.12)]">
+          <div className="pt-16">
+            <FeaturedCollections />
+            {/* <BrandStory />
+            <Newsletter /> */}
+            <Footer />
+          </div>
+        </div>
       </div>
     </div>
   );
