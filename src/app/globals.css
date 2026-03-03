@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+:root {
+  /* Luxury Color Palette */
+  --luxury-black: #000000;
+  --luxury-white: #FFFFFF;
+  --luxury-gold: #D4AF37;
+  --luxury-gray: #F5F5F5;
+  --luxury-charcoal: #2C2C2C;
+  --luxury-bronze: #CD7F32;
+  
+  /* Theme Colors */
+  --background: var(--luxury-white);
+  --foreground: var(--luxury-black);
+  --primary: var(--luxury-black);
+  --secondary: var(--luxury-gold);
+  --accent: var(--luxury-bronze);
+  --muted: var(--luxury-gray);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --font-serif: var(--font-playfair), serif;
+  --font-sans: var(--font-inter), sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: var(--luxury-charcoal);
+    --foreground: var(--luxury-white);
+    --primary: var(--luxury-white);
+    --secondary: var(--luxury-gold);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+/* Luxury Typography */
+.luxury-heading {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.luxury-body {
+  font-family: var(--font-sans);
+  font-weight: 300;
+}
+
+/* Luxury Button Styles */
+.luxury-button {
+  @apply px-8 py-3 bg-black text-white font-medium tracking-wide transition-all duration-300 hover:bg-gray-900 hover:shadow-lg;
+}
+
+.luxury-button-outline {
+  @apply px-8 py-3 border-2 border-black text-black font-medium tracking-wide transition-all duration-300 hover:bg-black hover:text-white;
+}
+
+/* Luxury Card Styles */
+.luxury-card {
+  @apply bg-white border border-gray-200 shadow-sm hover:shadow-lg transition-shadow duration-300;
+}
+
+/* Luxury Form Styles */
+.luxury-input {
+  @apply w-full px-4 py-3 border border-gray-300 focus:border-black focus:outline-none transition-colors duration-200;
+}
+
+/* Luxury Navigation */
+.luxury-nav-link {
+  @apply text-gray-700 hover:text-black transition-colors duration-200 font-medium tracking-wide;
+}
