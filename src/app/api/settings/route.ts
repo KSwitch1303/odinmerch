@@ -10,6 +10,7 @@ type BrandSettings = {
   homeHeroDesktopUrls?: string[];
   homeHeroMobileUrl?: string;
   homeHeroMobileUrls?: string[];
+  productsHeaderImageUrl?: string;
   slogan?: string;
   facebookUrl?: string;
   instagramUrl?: string;
@@ -111,6 +112,7 @@ export async function GET() {
       homeHeroDesktopUrls: desktopUrls,
       homeHeroMobileUrl: mobileUrls[0] || '',
       homeHeroMobileUrls: mobileUrls,
+      productsHeaderImageUrl: doc?.productsHeaderImageUrl || '',
       slogan: doc?.slogan || '',
       facebookUrl: doc?.facebookUrl || '',
       instagramUrl: doc?.instagramUrl || '',
@@ -131,6 +133,7 @@ export async function GET() {
       homeHeroDesktopUrls: [],
       homeHeroMobileUrl: '',
       homeHeroMobileUrls: [],
+      productsHeaderImageUrl: '',
       slogan: '',
       facebookUrl: '',
       instagramUrl: '',
@@ -164,6 +167,7 @@ export async function PUT(request: NextRequest) {
       homeHeroDesktopUrls,
       homeHeroMobileUrl,
       homeHeroMobileUrls,
+      productsHeaderImageUrl,
       slogan,
       facebookUrl,
       instagramUrl,
@@ -206,6 +210,7 @@ export async function PUT(request: NextRequest) {
             homeHeroDesktopUrls: desktopUrls,
             homeHeroMobileUrl: mobileUrls[0] || '',
             homeHeroMobileUrls: mobileUrls,
+            productsHeaderImageUrl: String(productsHeaderImageUrl || ''),
             slogan: String(slogan || ''),
             facebookUrl: String(facebookUrl || ''),
             instagramUrl: String(instagramUrl || ''),

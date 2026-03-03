@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       query.$or = [{ name: re }, { description: re }];
     }
 
-    const sortSpec =
+    const sortSpec: Record<string, 1 | -1> =
       sort === 'price-low'
         ? { price: 1, created_at: -1 }
         : sort === 'price-high'

@@ -8,6 +8,7 @@ export default function AdminContentPage() {
   const [logoUrl, setLogoUrl] = useState('');
   const [homeHeroDesktopUrls, setHomeHeroDesktopUrls] = useState<string[]>([]);
   const [homeHeroMobileUrls, setHomeHeroMobileUrls] = useState<string[]>([]);
+  const [productsHeaderImageUrl, setProductsHeaderImageUrl] = useState('');
   const [slogan, setSlogan] = useState('');
   const [facebookUrl, setFacebookUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
@@ -24,9 +25,11 @@ export default function AdminContentPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadingHeroDesktop, setUploadingHeroDesktop] = useState(false);
   const [uploadingHeroMobile, setUploadingHeroMobile] = useState(false);
+  const [uploadingProductsHeader, setUploadingProductsHeader] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [heroDesktopFiles, setHeroDesktopFiles] = useState<File[]>([]);
   const [heroMobileFiles, setHeroMobileFiles] = useState<File[]>([]);
+  const [productsHeaderFile, setProductsHeaderFile] = useState<File | null>(null);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -51,6 +54,7 @@ export default function AdminContentPage() {
               ? [json.homeHeroMobileUrl]
               : []
         );
+        setProductsHeaderImageUrl(json.productsHeaderImageUrl || '');
         setSlogan(json.slogan || '');
         setFacebookUrl(json.facebookUrl || '');
         setInstagramUrl(json.instagramUrl || '');
@@ -156,6 +160,26 @@ export default function AdminContentPage() {
     }
   };
 
+  const uploadProductsHeader = async () => {
+    if (!productsHeaderFile) return;
+    setUploadingProductsHeader(true);
+    setMessage('');
+    try {
+      const url = await uploadAsset({
+        file: productsHeaderFile,
+        path: 'products/header',
+        replaceExisting: true,
+      });
+      setProductsHeaderImageUrl(url);
+      setProductsHeaderFile(null);
+      setMessage('Products header image uploaded. Click “Save Settings” to apply.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Upload failed.');
+    } finally {
+      setUploadingProductsHeader(false);
+    }
+  };
+
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -177,6 +201,7 @@ export default function AdminContentPage() {
         homeHeroDesktopUrls,
         homeHeroMobileUrl: homeHeroMobileUrls[0] || '',
         homeHeroMobileUrls,
+        productsHeaderImageUrl,
         slogan,
         facebookUrl,
         instagramUrl,
@@ -399,6 +424,54 @@ export default function AdminContentPage() {
                 readOnly
                 className="w-full border border-neutral-300 bg-white text-black placeholder:text-gray-400 px-4 py-3 focus:outline-none focus:ring-1 focus:ring-black min-h-24"
                 placeholder="Mobile hero URLs will appear here after upload"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm uppercase tracking-wider mb-2 text-gray-700">Products Header Background</label>
+            <div className="space-y-3">
+              {productsHeaderImageUrl ? (
+                <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3">
+                  <div className="rounded border border-neutral-200 overflow-hidden">
+                    <img src={productsHeaderImageUrl} alt="Products header background" className="w-full h-40 object-cover" />
+                    <div className="p-3 flex justify-end">
+                      <button
+                        type="button"
+                        className="px-4 py-2 border border-black text-black tracking-wider uppercase text-xs disabled:opacity-50"
+                        onClick={() => {
+                          setProductsHeaderImageUrl('');
+                          setProductsHeaderFile(null);
+                          setMessage('Products header image removed. Click “Save Settings” to apply.');
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setProductsHeaderFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-gray-800"
+                />
+                <button
+                  type="button"
+                  onClick={uploadProductsHeader}
+                  disabled={!productsHeaderFile || uploadingProductsHeader}
+                  className="px-6 py-3 bg-black text-white tracking-wider uppercase text-sm disabled:opacity-50"
+                >
+                  {uploadingProductsHeader ? 'Uploading…' : 'Upload'}
+                </button>
+              </div>
+              <input
+                value={productsHeaderImageUrl}
+                readOnly
+                className="w-full border border-neutral-300 bg-white text-black placeholder:text-gray-400 px-4 py-3 focus:outline-none focus:ring-1 focus:ring-black"
+                placeholder="Products header URL will appear here after upload"
               />
             </div>
           </div>

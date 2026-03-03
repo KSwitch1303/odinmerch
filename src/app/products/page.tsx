@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
 import { Search, Filter, ChevronDown } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -48,7 +47,6 @@ function cleanImageSrc(value: unknown) {
 }
 
 export default function ProductsPage() {
-  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,21 +57,34 @@ export default function ProductsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState<CategoryOption[]>([{ id: 'all', name: 'All Collections' }]);
+  const [productsHeaderImageUrl, setProductsHeaderImageUrl] = useState('');
 
   useEffect(() => {
-    const categoryFromUrl = searchParams.get('category');
+    const timeoutId = window.setTimeout(() => {
+      setCurrentPage(1);
+      setQuerySearchTerm(searchTerm);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const categoryFromUrl = params.get('category');
     if (categoryFromUrl) {
       setSelectedCategory(categoryFromUrl);
     }
 
-    const searchFromUrl = searchParams.get('search');
+    const searchFromUrl = params.get('search');
     if (searchFromUrl) {
       setSearchTerm(searchFromUrl);
       setQuerySearchTerm(searchFromUrl);
     }
 
     setCurrentPage(1);
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     const fetchCollections = async () => {
@@ -81,11 +92,12 @@ export default function ProductsPage() {
         const res = await fetch('/api/collections');
         const data = await res.json();
         if (data?.success && Array.isArray(data.data)) {
+          const items: unknown[] = data.data;
           const next: CategoryOption[] = [
             { id: 'all', name: 'All Collections' },
-            ...data.data
+            ...items
               .filter(isCollectionsApiItem)
-              .map((c) => ({ id: c.slug, name: c.name })),
+              .map((c: CollectionsApiItem) => ({ id: c.slug, name: c.name })),
           ];
           setCategories(next);
         }
@@ -95,6 +107,20 @@ export default function ProductsPage() {
     };
 
     fetchCollections();
+  }, []);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) return;
+        const json = await res.json();
+        setProductsHeaderImageUrl(
+          typeof json?.productsHeaderImageUrl === 'string' ? json.productsHeaderImageUrl : ''
+        );
+      } catch {}
+    };
+    loadSettings();
   }, []);
 
   const categoryOptions = useMemo(() => {
@@ -156,12 +182,32 @@ export default function ProductsPage() {
       <Navigation />
       
       {/* Header */}
-      <div className="bg-gray-50 py-10 sm:py-14">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold luxury-heading text-black mb-3">
+      <div className={`relative py-10 sm:py-14 overflow-hidden ${productsHeaderImageUrl ? '' : 'bg-gray-50'}`}>
+        {productsHeaderImageUrl ? (
+          <div className="absolute inset-0">
+            <Image
+              src={productsHeaderImageUrl}
+              alt="Products header background"
+              fill
+              priority
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-black/45" />
+          </div>
+        ) : null}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h1
+            className={`text-3xl sm:text-4xl md:text-5xl font-bold luxury-heading mb-3 ${
+              productsHeaderImageUrl ? 'text-white' : 'text-black'
+            }`}
+          >
             Our Collections
           </h1>
-          <p className="text-base sm:text-lg text-gray-600 max-w-2xl">
+          <p
+            className={`text-base sm:text-lg max-w-2xl ${
+              productsHeaderImageUrl ? 'text-white/80' : 'text-gray-600'
+            }`}
+          >
             Discover our carefully curated selection of luxury fashion pieces, 
             each crafted with exceptional attention to detail and premium materials.
           </p>
@@ -322,7 +368,7 @@ export default function ProductsPage() {
                     <p className="text-gray-600 text-xs sm:text-sm mb-3 line-clamp-2">
                       {product.description}
                     </p>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
                       <div className="flex items-baseline gap-2">
                         <span className="text-lg sm:text-xl font-bold text-black">{formatPrice(product.price)}</span>
                         {typeof product.compare_at_price === 'number' && product.compare_at_price > product.price ? (
@@ -332,11 +378,15 @@ export default function ProductsPage() {
                         ) : null}
                       </div>
                       {product.inventory === 0 ? (
-                        <span className="text-xs sm:text-sm text-red-600 font-medium">Out of Stock</span>
+                        <div className="text-xs sm:text-sm text-red-600 font-medium">Out of Stock</div>
                       ) : product.inventory < 5 ? (
-                        <span className="text-xs sm:text-sm text-amber-600 font-medium">Low Stock</span>
+                        <div className="text-xs sm:text-sm text-amber-600 font-medium">
+                          Low Stock ({product.inventory} left)
+                        </div>
                       ) : (
-                        <span className="text-xs sm:text-sm text-green-600 font-medium">In Stock</span>
+                        <div className="text-xs sm:text-sm text-green-600 font-medium">
+                          In Stock ({product.inventory} left)
+                        </div>
                       )}
                     </div>
                   </div>
