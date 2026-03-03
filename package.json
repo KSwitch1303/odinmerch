@@ -13,6 +13,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/mongoose": "^5.11.96",
     "bcryptjs": "^3.0.3",
+    "framer-motion": "^12.34.5",
     "lucide-react": "^0.556.0",
     "mongodb": "^7.0.0",
     "mongoose": "^9.0.1",

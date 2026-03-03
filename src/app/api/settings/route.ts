@@ -7,7 +7,9 @@ type BrandSettings = {
   businessName?: string;
   logoUrl?: string;
   homeHeroDesktopUrl?: string;
+  homeHeroDesktopUrls?: string[];
   homeHeroMobileUrl?: string;
+  homeHeroMobileUrls?: string[];
   slogan?: string;
   facebookUrl?: string;
   instagramUrl?: string;
@@ -30,6 +32,19 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function normalizeStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === 'string' ? v.trim() : ''))
+      .filter((v) => v.length > 0);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
 }
 
 async function getEmailFromRequest(request: NextRequest) {
@@ -81,11 +96,21 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db('luxury-ecommerce');
     const doc = await db.collection<BrandSettings>('settings').findOne({ _id: 'brand' });
+
+    const desktopUrlsStored = normalizeStringArray(doc?.homeHeroDesktopUrls);
+    const mobileUrlsStored = normalizeStringArray(doc?.homeHeroMobileUrls);
+    const legacyDesktopUrl = typeof doc?.homeHeroDesktopUrl === 'string' ? doc.homeHeroDesktopUrl.trim() : '';
+    const legacyMobileUrl = typeof doc?.homeHeroMobileUrl === 'string' ? doc.homeHeroMobileUrl.trim() : '';
+    const desktopUrls = desktopUrlsStored.length > 0 ? desktopUrlsStored : normalizeStringArray(legacyDesktopUrl);
+    const mobileUrls = mobileUrlsStored.length > 0 ? mobileUrlsStored : normalizeStringArray(legacyMobileUrl);
+
     return NextResponse.json({
       businessName: doc?.businessName || 'ODIN',
       logoUrl: doc?.logoUrl || '',
-      homeHeroDesktopUrl: doc?.homeHeroDesktopUrl || '',
-      homeHeroMobileUrl: doc?.homeHeroMobileUrl || '',
+      homeHeroDesktopUrl: desktopUrls[0] || '',
+      homeHeroDesktopUrls: desktopUrls,
+      homeHeroMobileUrl: mobileUrls[0] || '',
+      homeHeroMobileUrls: mobileUrls,
       slogan: doc?.slogan || '',
       facebookUrl: doc?.facebookUrl || '',
       instagramUrl: doc?.instagramUrl || '',
@@ -103,7 +128,9 @@ export async function GET() {
       businessName: 'ODIN',
       logoUrl: '',
       homeHeroDesktopUrl: '',
+      homeHeroDesktopUrls: [],
       homeHeroMobileUrl: '',
+      homeHeroMobileUrls: [],
       slogan: '',
       facebookUrl: '',
       instagramUrl: '',
@@ -134,7 +161,9 @@ export async function PUT(request: NextRequest) {
       businessName,
       logoUrl,
       homeHeroDesktopUrl,
+      homeHeroDesktopUrls,
       homeHeroMobileUrl,
+      homeHeroMobileUrls,
       slogan,
       facebookUrl,
       instagramUrl,
@@ -147,6 +176,23 @@ export async function PUT(request: NextRequest) {
       address,
       copyrightText,
     } = await request.json();
+
+    const desktopUrlsFromBody = normalizeStringArray(homeHeroDesktopUrls);
+    const mobileUrlsFromBody = normalizeStringArray(homeHeroMobileUrls);
+    const legacyDesktopCandidate = typeof homeHeroDesktopUrl === 'string' ? homeHeroDesktopUrl.trim() : '';
+    const legacyMobileCandidate = typeof homeHeroMobileUrl === 'string' ? homeHeroMobileUrl.trim() : '';
+    const desktopUrls =
+      desktopUrlsFromBody.length > 0
+        ? desktopUrlsFromBody
+        : legacyDesktopCandidate
+          ? [legacyDesktopCandidate]
+          : [];
+    const mobileUrls =
+      mobileUrlsFromBody.length > 0
+        ? mobileUrlsFromBody
+        : legacyMobileCandidate
+          ? [legacyMobileCandidate]
+          : [];
     try {
       const client = await clientPromise;
       const db = client.db('luxury-ecommerce');
@@ -156,8 +202,10 @@ export async function PUT(request: NextRequest) {
           $set: {
             businessName: String(businessName || 'ODIN'),
             logoUrl: String(logoUrl || ''),
-            homeHeroDesktopUrl: String(homeHeroDesktopUrl || ''),
-            homeHeroMobileUrl: String(homeHeroMobileUrl || ''),
+            homeHeroDesktopUrl: desktopUrls[0] || '',
+            homeHeroDesktopUrls: desktopUrls,
+            homeHeroMobileUrl: mobileUrls[0] || '',
+            homeHeroMobileUrls: mobileUrls,
             slogan: String(slogan || ''),
             facebookUrl: String(facebookUrl || ''),
             instagramUrl: String(instagramUrl || ''),

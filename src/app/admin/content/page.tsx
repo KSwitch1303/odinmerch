@@ -6,8 +6,8 @@ import { supabase } from '@/lib/supabase';
 export default function AdminContentPage() {
   const [businessName, setBusinessName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [homeHeroDesktopUrl, setHomeHeroDesktopUrl] = useState('');
-  const [homeHeroMobileUrl, setHomeHeroMobileUrl] = useState('');
+  const [homeHeroDesktopUrls, setHomeHeroDesktopUrls] = useState<string[]>([]);
+  const [homeHeroMobileUrls, setHomeHeroMobileUrls] = useState<string[]>([]);
   const [slogan, setSlogan] = useState('');
   const [facebookUrl, setFacebookUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
@@ -25,8 +25,8 @@ export default function AdminContentPage() {
   const [uploadingHeroDesktop, setUploadingHeroDesktop] = useState(false);
   const [uploadingHeroMobile, setUploadingHeroMobile] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [heroDesktopFile, setHeroDesktopFile] = useState<File | null>(null);
-  const [heroMobileFile, setHeroMobileFile] = useState<File | null>(null);
+  const [heroDesktopFiles, setHeroDesktopFiles] = useState<File[]>([]);
+  const [heroMobileFiles, setHeroMobileFiles] = useState<File[]>([]);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -37,8 +37,20 @@ export default function AdminContentPage() {
         const json = await res.json();
         setBusinessName(json.businessName || 'ODIN');
         setLogoUrl(json.logoUrl || '');
-        setHomeHeroDesktopUrl(json.homeHeroDesktopUrl || '');
-        setHomeHeroMobileUrl(json.homeHeroMobileUrl || '');
+        setHomeHeroDesktopUrls(
+          Array.isArray(json.homeHeroDesktopUrls)
+            ? json.homeHeroDesktopUrls.filter((v: unknown) => typeof v === 'string' && v.length > 0)
+            : typeof json.homeHeroDesktopUrl === 'string' && json.homeHeroDesktopUrl
+              ? [json.homeHeroDesktopUrl]
+              : []
+        );
+        setHomeHeroMobileUrls(
+          Array.isArray(json.homeHeroMobileUrls)
+            ? json.homeHeroMobileUrls.filter((v: unknown) => typeof v === 'string' && v.length > 0)
+            : typeof json.homeHeroMobileUrl === 'string' && json.homeHeroMobileUrl
+              ? [json.homeHeroMobileUrl]
+              : []
+        );
         setSlogan(json.slogan || '');
         setFacebookUrl(json.facebookUrl || '');
         setInstagramUrl(json.instagramUrl || '');
@@ -105,13 +117,18 @@ export default function AdminContentPage() {
   };
 
   const uploadHeroDesktop = async () => {
-    if (!heroDesktopFile) return;
+    if (heroDesktopFiles.length === 0) return;
     setUploadingHeroDesktop(true);
     setMessage('');
     try {
-      const url = await uploadAsset({ file: heroDesktopFile, path: 'home-hero/desktop' });
-      setHomeHeroDesktopUrl(url);
-      setMessage('Desktop hero image uploaded. Click “Save Settings” to apply.');
+      const uploaded: string[] = [];
+      for (const file of heroDesktopFiles) {
+        const url = await uploadAsset({ file, path: 'home-hero/desktop' });
+        uploaded.push(url);
+      }
+      setHomeHeroDesktopUrls((prev) => [...prev, ...uploaded]);
+      setHeroDesktopFiles([]);
+      setMessage('Desktop hero images uploaded. Click “Save Settings” to apply.');
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Upload failed.');
     } finally {
@@ -120,13 +137,18 @@ export default function AdminContentPage() {
   };
 
   const uploadHeroMobile = async () => {
-    if (!heroMobileFile) return;
+    if (heroMobileFiles.length === 0) return;
     setUploadingHeroMobile(true);
     setMessage('');
     try {
-      const url = await uploadAsset({ file: heroMobileFile, path: 'home-hero/mobile' });
-      setHomeHeroMobileUrl(url);
-      setMessage('Mobile hero image uploaded. Click “Save Settings” to apply.');
+      const uploaded: string[] = [];
+      for (const file of heroMobileFiles) {
+        const url = await uploadAsset({ file, path: 'home-hero/mobile' });
+        uploaded.push(url);
+      }
+      setHomeHeroMobileUrls((prev) => [...prev, ...uploaded]);
+      setHeroMobileFiles([]);
+      setMessage('Mobile hero images uploaded. Click “Save Settings” to apply.');
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Upload failed.');
     } finally {
@@ -151,8 +173,10 @@ export default function AdminContentPage() {
       body: JSON.stringify({
         businessName,
         logoUrl,
-        homeHeroDesktopUrl,
-        homeHeroMobileUrl,
+        homeHeroDesktopUrl: homeHeroDesktopUrls[0] || '',
+        homeHeroDesktopUrls,
+        homeHeroMobileUrl: homeHeroMobileUrls[0] || '',
+        homeHeroMobileUrls,
         slogan,
         facebookUrl,
         instagramUrl,
@@ -256,20 +280,36 @@ export default function AdminContentPage() {
           <div>
             <label className="block text-sm uppercase tracking-wider mb-2 text-gray-700">Home Hero Background (Desktop)</label>
             <div className="space-y-3">
-              {homeHeroDesktopUrl ? (
-                <div className="rounded-lg border border-neutral-200 bg-white p-4">
-                  <img src={homeHeroDesktopUrl} alt="Home hero desktop background" className="w-full h-40 object-cover rounded" />
-                  <div className="mt-3 flex justify-end">
+              {homeHeroDesktopUrls.length > 0 ? (
+                <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3">
+                  {homeHeroDesktopUrls.map((url, idx) => (
+                    <div key={`${url}-${idx}`} className="rounded border border-neutral-200 overflow-hidden">
+                      <img src={url} alt={`Home hero desktop background ${idx + 1}`} className="w-full h-40 object-cover" />
+                      <div className="p-3 flex justify-end">
+                        <button
+                          type="button"
+                          className="px-4 py-2 border border-black text-black tracking-wider uppercase text-xs disabled:opacity-50"
+                          onClick={() => {
+                            setHomeHeroDesktopUrls((prev) => prev.filter((_, i) => i !== idx));
+                            setMessage('Desktop hero image removed. Click “Save Settings” to apply.');
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex justify-end">
                     <button
                       type="button"
                       className="px-4 py-2 border border-black text-black tracking-wider uppercase text-xs disabled:opacity-50"
                       onClick={() => {
-                        setHomeHeroDesktopUrl('');
-                        setHeroDesktopFile(null);
-                        setMessage('Desktop hero image removed. Click “Save Settings” to apply.');
+                        setHomeHeroDesktopUrls([]);
+                        setHeroDesktopFiles([]);
+                        setMessage('All desktop hero images removed. Click “Save Settings” to apply.');
                       }}
                     >
-                      Remove
+                      Remove All
                     </button>
                   </div>
                 </div>
@@ -278,23 +318,24 @@ export default function AdminContentPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setHeroDesktopFile(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => setHeroDesktopFiles(Array.from(e.target.files || []))}
                   className="block w-full text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-gray-800"
                 />
                 <button
                   type="button"
                   onClick={uploadHeroDesktop}
-                  disabled={!heroDesktopFile || uploadingHeroDesktop}
+                  disabled={heroDesktopFiles.length === 0 || uploadingHeroDesktop}
                   className="px-6 py-3 bg-black text-white tracking-wider uppercase text-sm disabled:opacity-50"
                 >
                   {uploadingHeroDesktop ? 'Uploading…' : 'Upload Desktop'}
                 </button>
               </div>
-              <input
-                value={homeHeroDesktopUrl}
+              <textarea
+                value={homeHeroDesktopUrls.join('\n')}
                 readOnly
-                className="w-full border border-neutral-300 bg-white text-black placeholder:text-gray-400 px-4 py-3 focus:outline-none focus:ring-1 focus:ring-black"
-                placeholder="Desktop hero URL will appear here after upload"
+                className="w-full border border-neutral-300 bg-white text-black placeholder:text-gray-400 px-4 py-3 focus:outline-none focus:ring-1 focus:ring-black min-h-24"
+                placeholder="Desktop hero URLs will appear here after upload"
               />
             </div>
           </div>
@@ -302,20 +343,36 @@ export default function AdminContentPage() {
           <div>
             <label className="block text-sm uppercase tracking-wider mb-2 text-gray-700">Home Hero Background (Mobile)</label>
             <div className="space-y-3">
-              {homeHeroMobileUrl ? (
-                <div className="rounded-lg border border-neutral-200 bg-white p-4">
-                  <img src={homeHeroMobileUrl} alt="Home hero mobile background" className="w-full h-40 object-cover rounded" />
-                  <div className="mt-3 flex justify-end">
+              {homeHeroMobileUrls.length > 0 ? (
+                <div className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3">
+                  {homeHeroMobileUrls.map((url, idx) => (
+                    <div key={`${url}-${idx}`} className="rounded border border-neutral-200 overflow-hidden">
+                      <img src={url} alt={`Home hero mobile background ${idx + 1}`} className="w-full h-40 object-cover" />
+                      <div className="p-3 flex justify-end">
+                        <button
+                          type="button"
+                          className="px-4 py-2 border border-black text-black tracking-wider uppercase text-xs disabled:opacity-50"
+                          onClick={() => {
+                            setHomeHeroMobileUrls((prev) => prev.filter((_, i) => i !== idx));
+                            setMessage('Mobile hero image removed. Click “Save Settings” to apply.');
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex justify-end">
                     <button
                       type="button"
                       className="px-4 py-2 border border-black text-black tracking-wider uppercase text-xs disabled:opacity-50"
                       onClick={() => {
-                        setHomeHeroMobileUrl('');
-                        setHeroMobileFile(null);
-                        setMessage('Mobile hero image removed. Click “Save Settings” to apply.');
+                        setHomeHeroMobileUrls([]);
+                        setHeroMobileFiles([]);
+                        setMessage('All mobile hero images removed. Click “Save Settings” to apply.');
                       }}
                     >
-                      Remove
+                      Remove All
                     </button>
                   </div>
                 </div>
@@ -324,23 +381,24 @@ export default function AdminContentPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setHeroMobileFile(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => setHeroMobileFiles(Array.from(e.target.files || []))}
                   className="block w-full text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-gray-800"
                 />
                 <button
                   type="button"
                   onClick={uploadHeroMobile}
-                  disabled={!heroMobileFile || uploadingHeroMobile}
+                  disabled={heroMobileFiles.length === 0 || uploadingHeroMobile}
                   className="px-6 py-3 bg-black text-white tracking-wider uppercase text-sm disabled:opacity-50"
                 >
                   {uploadingHeroMobile ? 'Uploading…' : 'Upload Mobile'}
                 </button>
               </div>
-              <input
-                value={homeHeroMobileUrl}
+              <textarea
+                value={homeHeroMobileUrls.join('\n')}
                 readOnly
-                className="w-full border border-neutral-300 bg-white text-black placeholder:text-gray-400 px-4 py-3 focus:outline-none focus:ring-1 focus:ring-black"
-                placeholder="Mobile hero URL will appear here after upload"
+                className="w-full border border-neutral-300 bg-white text-black placeholder:text-gray-400 px-4 py-3 focus:outline-none focus:ring-1 focus:ring-black min-h-24"
+                placeholder="Mobile hero URLs will appear here after upload"
               />
             </div>
           </div>
