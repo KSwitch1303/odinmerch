@@ -57,7 +57,7 @@ export default function AdminProductsPage() {
   const [productDescription, setProductDescription] = useState('');
   const [productPrice, setProductPrice] = useState('');
   const [productInventory, setProductInventory] = useState('0');
-  const [productSizes, setProductSizes] = useState('One Size');
+  const [productSizes, setProductSizes] = useState('');
   const [productCategory, setProductCategory] = useState('');
   const [productFiles, setProductFiles] = useState<File[]>([]);
 
@@ -372,7 +372,7 @@ export default function AdminProductsPage() {
       setProductDescription('');
       setProductPrice('');
       setProductInventory('0');
-      setProductSizes('One Size');
+      setProductSizes('');
       setProductFiles([]);
       await fetchProducts();
     } catch (e) {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
-import { Menu, X, ShoppingBag, User, Search, LayoutDashboard, Store } from 'lucide-react';
+import { Menu, X, ShoppingBag, User, Heart, LayoutDashboard, Store } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthProvider';
 import { supabase } from '@/lib/supabase';
@@ -22,6 +22,7 @@ export default function Navigation({
   const [brandName, setBrandName] = useState('ODIN');
   const [logoUrl, setLogoUrl] = useState('');
   const [cartCount, setCartCount] = useState(0);
+  const [wishlistHasDiscount, setWishlistHasDiscount] = useState(false);
   const [showBrandInNav, setShowBrandInNav] = useState(true);
   const [isAtTop, setIsAtTop] = useState(true);
   const pathname = usePathname();
@@ -106,27 +107,65 @@ export default function Navigation({
     }
   }, [variant]);
 
+  const fetchWishlistIndicator = useCallback(async () => {
+    if (variant !== 'store') return;
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        setWishlistHasDiscount(false);
+        return;
+      }
+
+      const res = await fetch('/api/wishlist', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        setWishlistHasDiscount(false);
+        return;
+      }
+
+      type WishlistItem = { product?: { price?: number; compare_at_price?: number | null } | null };
+      const items: WishlistItem[] = Array.isArray(json?.data?.items) ? json.data.items : [];
+      const hasDiscount = items.some((item) => {
+        const price = Number(item?.product?.price || 0);
+        const compareAt = item?.product?.compare_at_price;
+        return typeof compareAt === 'number' && compareAt > price;
+      });
+      setWishlistHasDiscount(hasDiscount);
+    } catch {
+      setWishlistHasDiscount(false);
+    }
+  }, [variant]);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void fetchCartCount();
+      void fetchWishlistIndicator();
     }, 0);
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [fetchCartCount, pathname, user?.id]);
+  }, [fetchCartCount, fetchWishlistIndicator, pathname, user?.id]);
 
   useEffect(() => {
     if (variant !== 'store') return;
     const refresh = () => {
       void fetchCartCount();
+      void fetchWishlistIndicator();
     };
     window.addEventListener('cart:changed', refresh as EventListener);
+    window.addEventListener('wishlist:changed', refresh as EventListener);
     window.addEventListener('focus', refresh);
     return () => {
       window.removeEventListener('cart:changed', refresh as EventListener);
+      window.removeEventListener('wishlist:changed', refresh as EventListener);
       window.removeEventListener('focus', refresh);
     };
-  }, [fetchCartCount, variant]);
+  }, [fetchCartCount, fetchWishlistIndicator, variant]);
 
   useEffect(() => {
     let rafId = 0;
@@ -230,9 +269,12 @@ export default function Navigation({
                 <Store className="h-5 w-5" />
               </Link>
             ) : (
-              <button className={storeTopIconClass}>
-                <Search className="h-5 w-5" />
-              </button>
+              <Link href="/wishlist" className={`${storeTopIconClass} relative`} aria-label="Wishlist">
+                <Heart className="h-5 w-5" />
+                {wishlistHasDiscount ? (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 border border-white" />
+                ) : null}
+              </Link>
             )}
             <Link
               href={user ? '/account' : `/login?next=${encodeURIComponent(pathname)}`}
@@ -329,10 +371,19 @@ export default function Navigation({
                     Store
                   </Link>
                 ) : (
-                  <button className="rounded-lg border border-gray-200 px-3 py-3 text-sm font-medium text-black hover:border-black transition-colors flex items-center justify-center gap-2">
-                    <Search className="h-5 w-5" />
-                    Search
-                  </button>
+                  <Link
+                    href="/wishlist"
+                    className="rounded-lg border border-gray-200 px-3 py-3 text-sm font-medium text-black hover:border-black transition-colors flex items-center justify-center gap-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <span className="relative">
+                      <Heart className="h-5 w-5" />
+                      {wishlistHasDiscount ? (
+                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500" />
+                      ) : null}
+                    </span>
+                    Wishlist
+                  </Link>
                 )}
 
                 <Link

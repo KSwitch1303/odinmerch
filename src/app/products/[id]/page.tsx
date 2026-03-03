@@ -39,6 +39,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (productId) {
       fetchProduct();
+      fetchWishlistState();
     }
   }, [productId]);
 
@@ -56,6 +57,24 @@ export default function ProductDetailPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchWishlistState = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        setIsWishlisted(false);
+        return;
+      }
+
+      const res = await fetch(`/api/wishlist?productId=${encodeURIComponent(productId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) return;
+      setIsWishlisted(Boolean(json?.data?.inWishlist));
+    } catch {}
   };
 
   const formatPrice = (price: number) => {
@@ -121,6 +140,54 @@ export default function ProductDetailPage() {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
       alert('Product link copied to clipboard!');
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        router.push(`/login?next=${encodeURIComponent(`/products/${productId}`)}`);
+        return;
+      }
+
+      if (isWishlisted) {
+        const res = await fetch('/api/wishlist', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ productId }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.success) {
+          alert(json?.error || 'Failed to update wishlist');
+          return;
+        }
+        setIsWishlisted(false);
+        window.dispatchEvent(new Event('wishlist:changed'));
+        return;
+      }
+
+      const res = await fetch('/api/wishlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ productId }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        alert(json?.error || 'Failed to update wishlist');
+        return;
+      }
+      setIsWishlisted(true);
+      window.dispatchEvent(new Event('wishlist:changed'));
+    } catch {
+      alert('Failed to update wishlist');
     }
   };
 
@@ -322,7 +389,7 @@ export default function ProductDetailPage() {
               
               <div className="flex space-x-4">
                 <button
-                  onClick={() => setIsWishlisted(!isWishlisted)}
+                  onClick={handleToggleWishlist}
                   className={`flex-1 flex items-center justify-center space-x-2 px-6 py-3 border transition-colors ${
                     isWishlisted
                       ? 'border-red-500 text-red-500'

@@ -58,6 +58,7 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState<CategoryOption[]>([{ id: 'all', name: 'All Collections' }]);
   const [productsHeaderImageUrl, setProductsHeaderImageUrl] = useState('');
+  const [initializedFromUrl, setInitializedFromUrl] = useState(false);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -84,6 +85,7 @@ export default function ProductsPage() {
     }
 
     setCurrentPage(1);
+    setInitializedFromUrl(true);
   }, []);
 
   useEffect(() => {
@@ -130,8 +132,9 @@ export default function ProductsPage() {
   }, [categories]);
 
   useEffect(() => {
+    if (!initializedFromUrl) return;
     fetchProducts();
-  }, [selectedCategory, sortBy, currentPage, querySearchTerm]);
+  }, [initializedFromUrl, selectedCategory, sortBy, currentPage, querySearchTerm]);
 
   const fetchProducts = async () => {
     try {

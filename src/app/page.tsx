@@ -15,7 +15,7 @@ export default function Home() {
         <div className="bg-white shadow-[0_-18px_40px_rgba(0,0,0,0.12)]">
           <div className="pt-16">
             <div className="relative">
-              <div className="sticky top-[calc(100vh-100%)] z-10">
+              <div className="sticky bottom-0 z-10">
                 <FeaturedCollections />
               </div>
               <div className="relative z-20 -mt-14 sm:-mt-20 lg:-mt-24">
