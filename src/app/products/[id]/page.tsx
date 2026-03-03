@@ -14,6 +14,7 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  compare_at_price?: number | null;
   category: string;
   images: string[];
   sizes: string[];
@@ -238,9 +239,12 @@ export default function ProductDetailPage() {
               <h1 className="text-4xl font-bold luxury-heading text-black mb-4">
                 {product.name}
               </h1>
-              <p className="text-2xl font-semibold text-black mb-2">
-                {formatPrice(product.price)}
-              </p>
+              <div className="mb-2 flex items-baseline gap-3">
+                <p className="text-2xl font-semibold text-black">{formatPrice(product.price)}</p>
+                {typeof product.compare_at_price === 'number' && product.compare_at_price > product.price ? (
+                  <p className="text-base text-gray-500 line-through">{formatPrice(product.compare_at_price)}</p>
+                ) : null}
+              </div>
               <p className="text-gray-600">
                 Category: {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
               </p>

@@ -12,6 +12,7 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  compare_at_price?: number | null;
   category: string;
   images: string[];
   sizes: string[];
@@ -268,9 +269,14 @@ export default function ProductsPage() {
                       {product.description}
                     </p>
                     <div className="flex items-center justify-between">
-                      <span className="text-xl font-bold text-black">
-                        {formatPrice(product.price)}
-                      </span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xl font-bold text-black">{formatPrice(product.price)}</span>
+                        {typeof product.compare_at_price === 'number' && product.compare_at_price > product.price ? (
+                          <span className="text-sm text-gray-500 line-through">
+                            {formatPrice(product.compare_at_price)}
+                          </span>
+                        ) : null}
+                      </div>
                       {product.inventory === 0 ? (
                         <span className="text-sm text-red-600 font-medium">Out of Stock</span>
                       ) : product.inventory < 5 ? (

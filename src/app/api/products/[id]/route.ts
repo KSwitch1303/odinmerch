@@ -186,6 +186,20 @@ export async function PUT(
       }
       update.price = price;
     }
+    if ('compare_at_price' in body) {
+      if (body.compare_at_price === null) {
+        update.compare_at_price = null;
+      } else {
+        const compareAtPrice = normalizeNumber(body.compare_at_price);
+        if (compareAtPrice === null || compareAtPrice <= 0 || compareAtPrice > 1000000) {
+          return NextResponse.json(
+            { success: false, error: 'Invalid compare_at_price' },
+            { status: 400 }
+          );
+        }
+        update.compare_at_price = compareAtPrice;
+      }
+    }
     if ('inventory' in body) {
       const inventory = normalizeInteger(body.inventory);
       if (inventory === null || inventory < 0 || inventory > 1000000) {

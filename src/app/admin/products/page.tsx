@@ -18,6 +18,7 @@ type Product = {
   name: string;
   description: string;
   price: number;
+  compare_at_price?: number | null;
   category: string;
   images: string[];
   sizes: string[];
@@ -43,6 +44,10 @@ export default function AdminProductsPage() {
 
   const [collections, setCollections] = useState<Collection[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editRegularPrice, setEditRegularPrice] = useState('');
+  const [editDiscountPercent, setEditDiscountPercent] = useState('0');
+  const [editInventory, setEditInventory] = useState('0');
 
   const [newCollectionName, setNewCollectionName] = useState('');
   const [newCollectionSlug, setNewCollectionSlug] = useState('');
@@ -198,6 +203,73 @@ export default function AdminProductsPage() {
       const json = await res.json();
       if (!res.ok || !json?.success) throw new Error(json?.error || 'Failed to update product');
       await fetchProducts();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update product');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startEditProduct = (p: Product) => {
+    const regular = typeof p.compare_at_price === 'number' && p.compare_at_price > 0 ? p.compare_at_price : p.price;
+    const discount =
+      regular > 0 && typeof p.price === 'number' && p.price < regular
+        ? Math.round(((regular - p.price) / regular) * 100)
+        : 0;
+    setEditingProductId(p._id);
+    setEditRegularPrice(String(regular));
+    setEditDiscountPercent(String(discount));
+    setEditInventory(String(p.inventory));
+  };
+
+  const cancelEditProduct = () => {
+    setEditingProductId(null);
+    setEditRegularPrice('');
+    setEditDiscountPercent('0');
+    setEditInventory('0');
+  };
+
+  const saveProductPricing = async (productId: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Missing session');
+
+      const regular = Number(editRegularPrice);
+      const discount = Number(editDiscountPercent);
+      const inventory = Number(editInventory);
+
+      if (!Number.isFinite(regular) || regular <= 0) throw new Error('Enter a valid price');
+      if (!Number.isFinite(discount) || discount < 0 || discount > 99) throw new Error('Enter a valid discount (0-99)');
+      if (!Number.isInteger(inventory) || inventory < 0) throw new Error('Enter a valid inventory');
+
+      const roundPrice = (value: number) => Math.round(value * 100) / 100;
+
+      let nextPrice = regular;
+      let compare_at_price: number | null = null;
+      if (discount > 0) {
+        nextPrice = roundPrice(regular * (1 - discount / 100));
+        if (nextPrice <= 0) throw new Error('Discount too high');
+        compare_at_price = regular;
+      }
+
+      const res = await fetch(`/api/products/${encodeURIComponent(productId)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          price: nextPrice,
+          compare_at_price,
+          inventory,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(String(json?.error || 'Failed to update product'));
+      await fetchProducts();
+      cancelEditProduct();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update product');
     } finally {
@@ -560,6 +632,7 @@ export default function AdminProductsPage() {
                       <th className="py-2 pr-4">Product</th>
                       <th className="py-2 pr-4">Collection</th>
                       <th className="py-2 pr-4">Price</th>
+                      <th className="py-2 pr-4">Discount</th>
                       <th className="py-2 pr-4">Inventory</th>
                       <th className="py-2 pr-4">Active</th>
                       <th className="py-2 pr-4">Actions</th>
@@ -585,8 +658,56 @@ export default function AdminProductsPage() {
                           </div>
                         </td>
                         <td className="py-3 pr-4 text-gray-800">{p.category}</td>
-                        <td className="py-3 pr-4 text-gray-800">{formatPrice(p.price)}</td>
-                        <td className="py-3 pr-4 text-gray-800">{p.inventory}</td>
+                        <td className="py-3 pr-4 text-gray-800">
+                          {editingProductId === p._id ? (
+                            <input
+                              value={editRegularPrice}
+                              onChange={(e) => setEditRegularPrice(e.target.value)}
+                              className="w-32 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                              inputMode="decimal"
+                            />
+                          ) : (
+                            <div className="flex flex-col">
+                              <span className="font-medium text-black">{formatPrice(p.price)}</span>
+                              {typeof p.compare_at_price === 'number' && p.compare_at_price > p.price ? (
+                                <span className="text-xs text-gray-500 line-through">
+                                  {formatPrice(p.compare_at_price)}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4 text-gray-800">
+                          {editingProductId === p._id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                value={editDiscountPercent}
+                                onChange={(e) => setEditDiscountPercent(e.target.value)}
+                                className="w-20 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                                inputMode="numeric"
+                              />
+                              <span className="text-gray-600">%</span>
+                            </div>
+                          ) : typeof p.compare_at_price === 'number' && p.compare_at_price > p.price ? (
+                            <span className="inline-flex items-center rounded-full bg-black px-2.5 py-1 text-xs font-medium text-white">
+                              -{Math.round(((p.compare_at_price - p.price) / p.compare_at_price) * 100)}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4 text-gray-800">
+                          {editingProductId === p._id ? (
+                            <input
+                              value={editInventory}
+                              onChange={(e) => setEditInventory(e.target.value)}
+                              className="w-24 px-2 py-1 border border-gray-300 focus:border-black focus:outline-none transition-colors text-black"
+                              inputMode="numeric"
+                            />
+                          ) : (
+                            p.inventory
+                          )}
+                        </td>
                         <td className="py-3 pr-4">
                           <button
                             type="button"
@@ -598,14 +719,45 @@ export default function AdminProductsPage() {
                           </button>
                         </td>
                         <td className="py-3 pr-4">
-                          <button
-                            type="button"
-                            className="luxury-button-outline disabled:opacity-60"
-                            onClick={() => archiveProduct(p._id)}
-                            disabled={busy}
-                          >
-                            Archive
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {editingProductId === p._id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="luxury-button disabled:opacity-60"
+                                  onClick={() => saveProductPricing(p._id)}
+                                  disabled={busy}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  className="luxury-button-outline disabled:opacity-60"
+                                  onClick={cancelEditProduct}
+                                  disabled={busy}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="luxury-button-outline disabled:opacity-60"
+                                onClick={() => startEditProduct(p)}
+                                disabled={busy}
+                              >
+                                Edit
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="luxury-button-outline disabled:opacity-60"
+                              onClick={() => archiveProduct(p._id)}
+                              disabled={busy}
+                            >
+                              Archive
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -176,6 +176,18 @@ export async function POST(request: NextRequest) {
     const images = normalizeStringArray(body.images, 1, 10, 2048);
     const sizes = normalizeStringArray(body.sizes, 1, 20, 32);
     const price = normalizeNumber(body.price);
+    let compare_at_price: number | null | undefined = undefined;
+    if ('compare_at_price' in body) {
+      if (body.compare_at_price === null) {
+        compare_at_price = null;
+      } else {
+        const n = normalizeNumber(body.compare_at_price);
+        if (n === null || n <= 0 || n > 1000000) {
+          return NextResponse.json({ success: false, error: 'Invalid compare_at_price' }, { status: 400 });
+        }
+        compare_at_price = n;
+      }
+    }
     const inventory = normalizeInteger(body.inventory);
 
     if (!name) {
@@ -207,6 +219,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       price,
+      ...(compare_at_price !== undefined ? { compare_at_price } : {}),
       category,
       images,
       sizes,
