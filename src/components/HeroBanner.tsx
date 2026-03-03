@@ -13,6 +13,8 @@ export default function HeroBanner() {
   });
   const [desktopUrl, setDesktopUrl] = useState('');
   const [mobileUrl, setMobileUrl] = useState('');
+  const [brandName, setBrandName] = useState('ODIN');
+  const [slogan, setSlogan] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -23,6 +25,8 @@ export default function HeroBanner() {
         if (!json) return;
         setDesktopUrl(String(json.homeHeroDesktopUrl || ''));
         setMobileUrl(String(json.homeHeroMobileUrl || ''));
+        setBrandName(String(json.businessName || 'ODIN'));
+        setSlogan(String(json.slogan || ''));
       } catch {}
     };
     void load();
@@ -83,7 +87,7 @@ export default function HeroBanner() {
     };
   }, []);
 
-  const style = useMemo(() => {
+  const brandStyle = useMemo(() => {
     const p = progress;
     const translateX = metrics.dx * p;
     const translateY = metrics.dy * p;
@@ -91,10 +95,15 @@ export default function HeroBanner() {
     const opacity = p >= 1 ? 0 : Math.max(0, 1 - p * 1.15);
 
     return {
-      transform: `translate(-50%, 0) translate(${translateX}px, ${translateY}px) scale(${scale})`,
+      transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
       opacity,
     } as const;
   }, [metrics.dx, metrics.dy, metrics.scaleTo, progress]);
+
+  const sloganOpacity = useMemo(() => {
+    const p = progress;
+    return p >= 1 ? 0 : Math.max(0, 1 - p * 1.15);
+  }, [progress]);
 
   const hasBackground = Boolean(desktopUrl || mobileUrl);
 
@@ -121,19 +130,24 @@ export default function HeroBanner() {
       )}
 
       <div className="absolute inset-0">
-        <div
-          ref={heroRef}
-          className="fixed left-1/2 top-[20vh] z-40 select-none pointer-events-none"
-          style={style}
-          aria-hidden
-        >
+        <div className="fixed left-1/2 top-[20vh] z-40 select-none pointer-events-none -translate-x-1/2 text-center" aria-hidden>
           <div
+            ref={heroRef}
+            style={brandStyle}
             className={`luxury-heading font-extrabold !tracking-[0.15em] text-[clamp(5.9rem,12vw,11rem)] ${
               hasBackground ? 'text-white' : 'text-black'
             }`}
           >
-            ODIN
+            {brandName}
           </div>
+          {slogan ? (
+            <div
+              style={{ opacity: sloganOpacity }}
+              className={`${hasBackground ? 'text-white/90' : 'text-black/80'} mt-3 text-[clamp(1rem,2vw,1.35rem)] tracking-[0.28em] uppercase`}
+            >
+              {slogan}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

@@ -211,7 +211,20 @@ export default function AdminContentPage() {
             <div className="space-y-3">
               {logoUrl ? (
                 <div className="rounded-lg border border-neutral-200 bg-white p-4">
-                  <img src={logoUrl} alt="Current logo" className="h-12 w-auto" />
+                  <div className="flex items-center justify-between gap-4">
+                    <img src={logoUrl} alt="Current logo" className="h-12 w-auto" />
+                    <button
+                      type="button"
+                      className="px-4 py-2 border border-black text-black tracking-wider uppercase text-xs disabled:opacity-50"
+                      onClick={() => {
+                        setLogoUrl('');
+                        setLogoFile(null);
+                        setMessage('Logo removed. Click “Save Settings” to apply.');
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ) : null}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -246,6 +259,19 @@ export default function AdminContentPage() {
               {homeHeroDesktopUrl ? (
                 <div className="rounded-lg border border-neutral-200 bg-white p-4">
                   <img src={homeHeroDesktopUrl} alt="Home hero desktop background" className="w-full h-40 object-cover rounded" />
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      className="px-4 py-2 border border-black text-black tracking-wider uppercase text-xs disabled:opacity-50"
+                      onClick={() => {
+                        setHomeHeroDesktopUrl('');
+                        setHeroDesktopFile(null);
+                        setMessage('Desktop hero image removed. Click “Save Settings” to apply.');
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ) : null}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -279,6 +305,19 @@ export default function AdminContentPage() {
               {homeHeroMobileUrl ? (
                 <div className="rounded-lg border border-neutral-200 bg-white p-4">
                   <img src={homeHeroMobileUrl} alt="Home hero mobile background" className="w-full h-40 object-cover rounded" />
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      className="px-4 py-2 border border-black text-black tracking-wider uppercase text-xs disabled:opacity-50"
+                      onClick={() => {
+                        setHomeHeroMobileUrl('');
+                        setHeroMobileFile(null);
+                        setMessage('Mobile hero image removed. Click “Save Settings” to apply.');
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ) : null}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
