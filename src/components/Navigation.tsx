@@ -12,9 +12,11 @@ type NavigationVariant = 'store' | 'admin';
 export default function Navigation({
   variant = 'store',
   hideBrandOnHome = false,
+  overlay = false,
 }: {
   variant?: NavigationVariant;
   hideBrandOnHome?: boolean;
+  overlay?: boolean;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [brandName, setBrandName] = useState('ODIN');
@@ -161,10 +163,17 @@ export default function Navigation({
   }, [hideBrandOnHome, pathname, variant]);
 
   const homeNavTransparent = variant === 'store' && hideBrandOnHome && pathname === '/' && isAtTop;
+  const homeOverlay = variant === 'store' && overlay && pathname === '/';
+  const storeTopLinkClass = homeNavTransparent
+    ? 'text-sm uppercase tracking-wider font-medium text-white hover:text-white/80 transition-colors duration-200'
+    : 'luxury-nav-link text-sm uppercase tracking-wider';
+  const storeTopIconClass = homeNavTransparent
+    ? 'text-white hover:text-white/80 transition-colors'
+    : 'text-gray-700 hover:text-black transition-colors';
 
   return (
     <nav
-      className={`sticky top-0 z-50 transition-colors duration-300 ${
+      className={`${homeOverlay ? 'fixed top-0 left-0 right-0' : 'sticky top-0'} z-50 transition-colors duration-300 ${
         homeNavTransparent ? 'bg-transparent border-b-0 shadow-none' : 'bg-white border-b border-gray-200'
       }`}
     >
@@ -177,7 +186,9 @@ export default function Navigation({
             ) : null}
             <h1
               id="nav-brand-target"
-              className={`text-2xl font-bold luxury-heading text-black transition-opacity duration-300 ${
+              className={`text-2xl font-bold luxury-heading ${
+                homeNavTransparent ? 'text-white' : 'text-black'
+              } transition-opacity duration-300 ${
                 showBrandInNav ? 'opacity-100' : 'opacity-0'
               }`}
             >
@@ -200,7 +211,7 @@ export default function Navigation({
                   className={
                     variant === 'admin' && isAdminRoute(item.href)
                       ? 'luxury-nav-link text-sm uppercase tracking-wider text-black'
-                      : 'luxury-nav-link text-sm uppercase tracking-wider'
+                      : storeTopLinkClass
                   }
                 >
                   {item.name}
@@ -219,13 +230,13 @@ export default function Navigation({
                 <Store className="h-5 w-5" />
               </Link>
             ) : (
-              <button className="text-gray-700 hover:text-black transition-colors">
+              <button className={storeTopIconClass}>
                 <Search className="h-5 w-5" />
               </button>
             )}
             <Link
               href={user ? '/account' : `/login?next=${encodeURIComponent(pathname)}`}
-              className={user ? 'text-black transition-colors relative' : 'text-gray-700 hover:text-black transition-colors relative'}
+              className={`${homeNavTransparent ? storeTopIconClass : user ? 'text-black transition-colors' : storeTopIconClass} relative`}
             >
               <User className="h-5 w-5" />
               {user ? (
@@ -242,7 +253,7 @@ export default function Navigation({
             ) : (
               <Link
                 href="/cart"
-                className="text-gray-700 hover:text-black transition-colors relative"
+                className={`${storeTopIconClass} relative`}
               >
                 <ShoppingBag className="h-5 w-5" />
                 {cartCount > 0 ? (
@@ -258,7 +269,7 @@ export default function Navigation({
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-black transition-colors"
+              className={storeTopIconClass}
               aria-expanded={isMenuOpen}
               aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             >

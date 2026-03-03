@@ -91,7 +91,7 @@ export default function HeroBanner() {
     const opacity = p >= 1 ? 0 : Math.max(0, 1 - p * 1.15);
 
     return {
-      transform: `translate(-50%, -50%) translate(${translateX}px, ${translateY}px) scale(${scale})`,
+      transform: `translate(-50%, 0) translate(${translateX}px, ${translateY}px) scale(${scale})`,
       opacity,
     } as const;
   }, [metrics.dx, metrics.dy, metrics.scaleTo, progress]);
@@ -99,7 +99,7 @@ export default function HeroBanner() {
   const hasBackground = Boolean(desktopUrl || mobileUrl);
 
   return (
-    <section className="relative h-[92vh] bg-white">
+    <section className="relative h-screen bg-white">
       {hasBackground ? (
         <div className="absolute inset-0">
           <div className="absolute inset-0 hidden md:block">
@@ -123,12 +123,12 @@ export default function HeroBanner() {
       <div className="absolute inset-0">
         <div
           ref={heroRef}
-          className="fixed left-1/2 top-1/2 z-40 select-none pointer-events-none"
+          className="fixed left-1/2 top-[20vh] z-40 select-none pointer-events-none"
           style={style}
           aria-hidden
         >
           <div
-            className={`luxury-heading font-extrabold tracking-wide text-6xl sm:text-7xl md:text-8xl lg:text-9xl ${
+            className={`luxury-heading font-extrabold !tracking-[0.15em] text-[clamp(5.9rem,12vw,11rem)] ${
               hasBackground ? 'text-white' : 'text-black'
             }`}
           >

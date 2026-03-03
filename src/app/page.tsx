@@ -8,12 +8,14 @@ import Footer from '@/components/Footer';
 export default function Home() {
   return (
     <div className="min-h-screen bg-white">
-      <Navigation hideBrandOnHome />
+      <Navigation hideBrandOnHome overlay />
       <HeroBanner />
-      <FeaturedCollections />
-      <BrandStory />
-      <Newsletter />
-      <Footer />
+      <div className="-mt-16 pt-16">
+        <FeaturedCollections />
+        {/* <BrandStory />
+        <Newsletter /> */}
+        <Footer />
+      </div>
     </div>
   );
 }
