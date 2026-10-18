@@ -16,8 +16,10 @@ export default function Footer() {
   const [tiktokUrl, setTiktokUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
-  const [contactEmail, setContactEmail] = useState(DEFAULT_CONTACT_EMAIL);
-  const [address, setAddress] = useState(DEFAULT_ADDRESS);
+  // Start empty so nothing shows until the saved settings load; the defaults
+  // below are only used when no value is saved in the admin Content page.
+  const [contactEmail, setContactEmail] = useState('');
+  const [address, setAddress] = useState('');
   const [copyrightText, setCopyrightText] = useState('');
 
   useEffect(() => {
