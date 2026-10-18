@@ -48,7 +48,11 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   shipping_address: Address;
   total_amount: number;
+  currency?: string;
   payment_method: string;
+  payment_status?: 'unpaid' | 'paid' | 'failed';
+  payment_reference?: string;
+  paid_at?: Date;
   created_at: Date;
   updated_at: Date;
 }
@@ -63,11 +67,15 @@ export interface OrderItem {
 }
 
 export interface Address {
-  street: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  address: string;
   city: string;
   state: string;
-  zip: string;
+  zipCode: string;
   country: string;
+  phone: string;
 }
 
 // API Response Types

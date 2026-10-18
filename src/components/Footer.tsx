@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin, Linkedin, Youtube, Music2 } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Mail, MapPin, Linkedin, Youtube, Music2 } from 'lucide-react';
+
+const DEFAULT_CONTACT_EMAIL = 'Odinmerch990@gmail.com';
+const DEFAULT_ADDRESS = 'Lagos, Nigeria';
 
 export default function Footer() {
   const [businessName, setBusinessName] = useState('ODIN');
@@ -13,9 +16,8 @@ export default function Footer() {
   const [tiktokUrl, setTiktokUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [address, setAddress] = useState('');
+  const [contactEmail, setContactEmail] = useState(DEFAULT_CONTACT_EMAIL);
+  const [address, setAddress] = useState(DEFAULT_ADDRESS);
   const [copyrightText, setCopyrightText] = useState('');
 
   useEffect(() => {
@@ -33,9 +35,8 @@ export default function Footer() {
         setTiktokUrl(String(json.tiktokUrl || ''));
         setYoutubeUrl(String(json.youtubeUrl || ''));
         setLinkedinUrl(String(json.linkedinUrl || ''));
-        setContactEmail(String(json.contactEmail || ''));
-        setPhoneNumber(String(json.phoneNumber || ''));
-        setAddress(String(json.address || ''));
+        setContactEmail(String(json.contactEmail || DEFAULT_CONTACT_EMAIL));
+        setAddress(String(json.address || DEFAULT_ADDRESS));
         setCopyrightText(String(json.copyrightText || ''));
       } catch {}
     };
@@ -151,22 +152,12 @@ export default function Footer() {
 
         {/* Contact Info */}
         <div className="border-t border-gray-800 mt-12 pt-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {contactEmail ? (
               <div className="flex items-center space-x-3">
                 <Mail className="h-5 w-5 text-gray-400" />
                 <a className="text-gray-300 hover:text-white transition-colors" href={`mailto:${contactEmail}`}>
                   {contactEmail}
-                </a>
-              </div>
-            ) : (
-              <div />
-            )}
-            {phoneNumber ? (
-              <div className="flex items-center space-x-3">
-                <Phone className="h-5 w-5 text-gray-400" />
-                <a className="text-gray-300 hover:text-white transition-colors" href={`tel:${phoneNumber}`}>
-                  {phoneNumber}
                 </a>
               </div>
             ) : (

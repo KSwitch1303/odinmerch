@@ -37,10 +37,6 @@ interface CheckoutForm {
   zipCode: string;
   country: string;
   phone: string;
-  cardNumber: string;
-  cardName: string;
-  expiryDate: string;
-  cvv: string;
 }
 
 export default function CheckoutPage() {
@@ -56,12 +52,8 @@ export default function CheckoutPage() {
     city: '',
     state: '',
     zipCode: '',
-    country: 'United States',
+    country: 'Nigeria',
     phone: '',
-    cardNumber: '',
-    cardName: '',
-    expiryDate: '',
-    cvv: '',
   });
 
   useEffect(() => {
@@ -129,30 +121,22 @@ export default function CheckoutPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          items: cart.items.map(item => ({
-            productId: item.product_id,
-            quantity: item.quantity,
-            size: item.size,
-            price: item.product.price,
-          })),
-          total: cart.total,
-          shippingAddress: formData,
-        }),
+        // Items and prices come from the server-side cart; only shipping details are sent.
+        body: JSON.stringify({ shippingAddress: formData }),
       });
 
       const orderData = await orderResponse.json();
 
-      if (orderData.success) {
-        window.dispatchEvent(new Event('cart:changed'));
-        router.push(`/order-success?orderId=${orderData.data.orderId}`);
-      } else {
-        alert('Error processing order. Please try again.');
+      if (orderData.success && orderData.data?.authorizationUrl) {
+        // Paystack collects the card details and redirects back to /order-success.
+        window.location.href = orderData.data.authorizationUrl;
+        return;
       }
+      alert(orderData.error || 'Error processing order. Please try again.');
+      setProcessing(false);
     } catch (error) {
       console.error('Error processing checkout:', error);
       alert('Error processing order. Please try again.');
-    } finally {
       setProcessing(false);
     }
   };
@@ -332,13 +316,12 @@ export default function CheckoutPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
-                        ZIP Code
+                        Postal Code (optional)
                       </label>
                       <input
                         type="text"
                         id="zipCode"
                         name="zipCode"
-                        required
                         value={formData.zipCode}
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
@@ -356,6 +339,8 @@ export default function CheckoutPage() {
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
                       >
+                        <option value="Nigeria">Nigeria</option>
+                        <option value="Ghana">Ghana</option>
                         <option value="United States">United States</option>
                         <option value="Canada">Canada</option>
                         <option value="United Kingdom">United Kingdom</option>
@@ -384,78 +369,16 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Payment Information */}
+              {/* Payment */}
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h2 className="text-xl font-semibold text-black mb-4 flex items-center">
                   <CreditCard className="h-5 w-5 mr-2 text-gold" />
-                  Payment Information
+                  Payment
                 </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                      Card Number
-                    </label>
-                    <input
-                      type="text"
-                      id="cardNumber"
-                      name="cardNumber"
-                      required
-                      placeholder="1234 5678 9012 3456"
-                      value={formData.cardNumber}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                      maxLength={19}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="cardName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Cardholder Name
-                    </label>
-                    <input
-                      type="text"
-                      id="cardName"
-                      name="cardName"
-                      required
-                      value={formData.cardName}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-1">
-                        Expiry Date
-                      </label>
-                      <input
-                        type="text"
-                        id="expiryDate"
-                        name="expiryDate"
-                        required
-                        placeholder="MM/YY"
-                        value={formData.expiryDate}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                        maxLength={5}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="cvv" className="block text-sm font-medium text-gray-700 mb-1">
-                        CVV
-                      </label>
-                      <input
-                        type="text"
-                        id="cvv"
-                        name="cvv"
-                        required
-                        placeholder="123"
-                        value={formData.cvv}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent"
-                        maxLength={4}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <p className="text-sm text-gray-600">
+                  You&apos;ll be redirected to Paystack to pay securely by card, bank transfer or USSD.
+                  We never see or store your card details.
+                </p>
               </div>
 
               <button
@@ -463,7 +386,7 @@ export default function CheckoutPage() {
                 disabled={processing}
                 className="w-full luxury-button flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>{processing ? 'Processing...' : 'Complete Order'}</span>
+                <span>{processing ? 'Redirecting to Paystack...' : `Pay ${formatPrice(cart.total)}`}</span>
                 <ChevronRight className="h-5 w-5" />
               </button>
             </form>
@@ -509,23 +432,19 @@ export default function CheckoutPage() {
                   <span className="text-gray-600">Shipping</span>
                   <span className="text-black font-medium">Free</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="text-black font-medium">{formatPrice(cart.total * 0.08)}</span>
-                </div>
               </div>
 
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <div className="flex justify-between text-lg font-semibold">
                   <span className="text-black">Total</span>
-                  <span className="text-black">{formatPrice(cart.total * 1.08)}</span>
+                  <span className="text-black">{formatPrice(cart.total)}</span>
                 </div>
               </div>
 
               <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Shield className="h-4 w-4 text-gold" />
-                  <span>Secure checkout powered by Stripe</span>
+                  <span>Secure checkout powered by Paystack</span>
                 </div>
               </div>
             </div>

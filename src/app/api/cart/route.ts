@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     const { productId, quantity, size } = await request.json();
 
-    if (!productId || !size || typeof quantity !== 'number' || quantity < 1) {
+    if (typeof productId !== 'string' || !ObjectId.isValid(productId) || !size || !Number.isInteger(quantity) || quantity < 1) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
@@ -185,7 +185,7 @@ export async function PUT(request: NextRequest) {
 
     const { itemId, quantity } = await request.json();
 
-    if (!itemId || !quantity || quantity < 1) {
+    if (typeof itemId !== 'string' || !ObjectId.isValid(itemId) || !Number.isInteger(quantity) || quantity < 1) {
       return NextResponse.json(
         { success: false, error: 'Invalid item ID or quantity' },
         { status: 400 }
@@ -255,7 +255,7 @@ export async function DELETE(request: NextRequest) {
 
     const { itemId } = await request.json();
 
-    if (!itemId) {
+    if (typeof itemId !== 'string' || !ObjectId.isValid(itemId)) {
       return NextResponse.json(
         { success: false, error: 'Missing item ID' },
         { status: 400 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
-import { Order, OrderItem, Product } from '@/types';
+import { Order, Product } from '@/types';
+import { initializeTransaction, toKobo } from '@/lib/paystack';
 import { supabase } from '@/lib/supabase';
 import { ObjectId, type Filter } from 'mongodb';
 
@@ -52,6 +53,43 @@ function isOrderStatus(value: unknown): value is OrderStatus {
   );
 }
 
+const SHIPPING_FIELDS = {
+  email: { max: 254, required: true },
+  firstName: { max: 80, required: true },
+  lastName: { max: 80, required: true },
+  address: { max: 300, required: true },
+  city: { max: 100, required: true },
+  state: { max: 100, required: true },
+  zipCode: { max: 20, required: false },
+  country: { max: 80, required: true },
+  phone: { max: 32, required: true },
+} as const;
+
+type ShippingAddress = Record<keyof typeof SHIPPING_FIELDS, string>;
+
+// Keeps only known address fields so nothing else (e.g. card details) is stored.
+function normalizeShippingAddress(value: unknown): ShippingAddress | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const input = value as Record<string, unknown>;
+  const out = {} as ShippingAddress;
+  for (const [key, rule] of Object.entries(SHIPPING_FIELDS) as [keyof ShippingAddress, { max: number; required: boolean }][]) {
+    const raw = typeof input[key] === 'string' ? (input[key] as string).trim() : '';
+    if ((rule.required && !raw) || raw.length > rule.max) return null;
+    out[key] = raw;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(out.email)) return null;
+  return out;
+}
+
+type CheckoutCartRow = {
+  quantity: number;
+  size: string;
+  product: { _id: ObjectId; name?: string; price?: number; sizes?: string[]; inventory?: number; is_active?: boolean };
+};
+
+// Creates a pending order from the user's server-side cart (prices come from the
+// products collection, never the client) and starts a Paystack transaction.
+// The order is marked paid by /api/payments/verify or the Paystack webhook.
 export async function POST(request: NextRequest) {
   try {
     const authUser = await getAuthUserFromRequest(request);
@@ -63,68 +101,105 @@ export async function POST(request: NextRequest) {
     }
     const userId = authUser.id;
 
-    const { items, shippingAddress, payment_method = 'credit_card', total } = await request.json();
-
-    if (!items || !shippingAddress || total === undefined) {
+    const body = await request.json().catch(() => null);
+    const shippingAddress = normalizeShippingAddress(body?.shippingAddress);
+    if (!shippingAddress) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Invalid shipping details' },
         { status: 400 }
       );
     }
 
     const client = await clientPromise;
     const db = client.db('luxury-ecommerce');
-    
-    // Create order
-    const newOrder: Omit<Order, '_id'> = {
+
+    const cart = await db.collection('carts').findOne({ user_id: userId });
+    const cartItems = cart
+      ? ((await db
+          .collection('cart_items')
+          .aggregate([
+            { $match: { cart_id: cart._id } },
+            { $lookup: { from: 'products', localField: 'product_id', foreignField: '_id', as: 'product' } },
+            { $unwind: '$product' },
+          ])
+          .toArray()) as CheckoutCartRow[])
+      : [];
+
+    if (cartItems.length === 0) {
+      return NextResponse.json({ success: false, error: 'Your cart is empty' }, { status: 400 });
+    }
+
+    for (const item of cartItems) {
+      const p = item.product;
+      const name = p.name || 'An item';
+      if (!p.is_active || typeof p.price !== 'number' || p.price <= 0) {
+        return NextResponse.json({ success: false, error: `${name} is no longer available` }, { status: 409 });
+      }
+      if (Array.isArray(p.sizes) && p.sizes.length > 0 && !p.sizes.includes(item.size)) {
+        return NextResponse.json({ success: false, error: `${name} is not available in size ${item.size}` }, { status: 409 });
+      }
+      if (!Number.isInteger(item.quantity) || item.quantity < 1 || Number(p.inventory || 0) < item.quantity) {
+        return NextResponse.json({ success: false, error: `Not enough stock for ${name}` }, { status: 409 });
+      }
+    }
+
+    const orderItems = cartItems.map((item) => ({
+      _id: new ObjectId().toString(),
+      product_id: item.product._id.toString(),
+      quantity: item.quantity,
+      price: Number(item.product.price),
+      size: item.size,
+    }));
+    const total = Math.round(orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * 100) / 100;
+
+    const orderId = new ObjectId();
+    const reference = `ODIN-${orderId.toHexString()}`;
+    const now = new Date();
+
+    await db.collection('orders').insertOne({
+      _id: orderId,
       user_id: userId,
-      items: [],
+      items: orderItems,
       status: 'pending',
       shipping_address: shippingAddress,
       total_amount: total,
-      payment_method,
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
+      currency: 'NGN',
+      payment_method: 'paystack',
+      payment_status: 'unpaid',
+      payment_reference: reference,
+      created_at: now,
+      updated_at: now,
+    });
 
-    const orderResult = await db.collection('orders').insertOne(newOrder);
-    const orderId = orderResult.insertedId;
-
-    // Create order items
-    const orderItems: Omit<OrderItem, '_id'>[] = items.map((item: { productId: string; quantity: number; price: number; size: string }) => ({
-      order_id: orderId.toString(),
-      product_id: item.productId,
-      quantity: item.quantity,
-      price: item.price,
-      size: item.size,
-    }));
-
-    await db.collection('order_items').insertMany(orderItems);
-
-    // Update order with items
-    await db.collection('orders').updateOne(
-      { _id: orderId },
-      { 
-        $set: { 
-          items: orderItems.map(item => ({
-            ...item,
-            _id: new ObjectId().toString(),
-          }))
-        } 
-      }
-    );
-
-    const cart = await db.collection('carts').findOne({ user_id: userId });
-    if (cart?._id) {
-      await db.collection('cart_items').deleteMany({ cart_id: cart._id });
-      await db.collection('carts').deleteOne({ _id: cart._id });
+    const baseUrl = String(process.env.APP_URL || '').trim().replace(/\/+$/, '') || request.nextUrl.origin;
+    let authorizationUrl: string;
+    try {
+      const tx = await initializeTransaction({
+        email: shippingAddress.email,
+        amountKobo: toKobo(total),
+        reference,
+        callbackUrl: `${baseUrl}/order-success`,
+        metadata: { order_id: orderId.toHexString(), user_id: userId },
+      });
+      authorizationUrl = tx.authorization_url;
+    } catch (error) {
+      console.error('Paystack initialize error:', error);
+      await db.collection('orders').updateOne(
+        { _id: orderId },
+        { $set: { status: 'cancelled', payment_status: 'failed', updated_at: new Date() } }
+      );
+      return NextResponse.json(
+        { success: false, error: 'Could not start payment. Please try again.' },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        orderId: orderId.toString(),
-        status: 'pending',
+        orderId: orderId.toHexString(),
+        reference,
+        authorizationUrl,
       },
     });
   } catch (error) {
@@ -213,6 +288,7 @@ export async function GET(request: NextRequest) {
 
       const orderBaseMatch: Filter<MongoOrder> = {
         status: { $ne: 'cancelled' },
+        payment_status: { $nin: ['unpaid', 'failed'] },
       };
 
       const totalRevenueAgg = await db
@@ -348,7 +424,7 @@ export async function GET(request: NextRequest) {
       const previousStart = new Date(now);
       previousStart.setDate(previousStart.getDate() - days * 2);
 
-      const matchBase: Filter<MongoOrder> = { status: { $ne: 'cancelled' } };
+      const matchBase: Filter<MongoOrder> = { status: { $ne: 'cancelled' }, payment_status: { $nin: ['unpaid', 'failed'] } };
       const currentMatch: Filter<MongoOrder> = { ...matchBase, created_at: { $gte: currentStart } };
       const previousMatch: Filter<MongoOrder> = { ...matchBase, created_at: { $gte: previousStart, $lt: currentStart } };
 
@@ -549,6 +625,7 @@ export async function GET(request: NextRequest) {
 
       const baseMatch: Record<string, unknown> = {
         status: { $ne: 'cancelled' },
+        payment_status: { $nin: ['unpaid', 'failed'] },
         'shipping_address.email': { $exists: true, $ne: '' },
       };
 
